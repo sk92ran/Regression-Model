@@ -25,6 +25,7 @@ library(forecast)
 install.packages("MLmetrics")
 library(MLmetrics)
 
+
 #Import data and form a dataframe
 df_prac<-as.data.frame(read.csv('cereal.csv'))
 #Descriptive stats of the attributes
@@ -49,7 +50,6 @@ ncol(df_prac)
 #trimming columns to only necessary columns
 df_analyze<-df_prac[,c(4:16)]
 # Train test split
-attach(df_analyze)
 smp_size = floor(0.80*nrow(df_analyze))
 set.seed(123)
 smp_size 
@@ -62,11 +62,11 @@ test = df_analyze[-train_ind,]
 str(train)
 #Creates a correlation matrix with circles as the intensity of the values 
 #and colors as the positive and negative values
-dev.off()
-M<- cor(train)
-corrplot(M,method="circle")
+##dev.off()
+##M<- cor(train)
+##corrplot(M,method="circle")
 #Another way to represent the corr matrix with numbers below and circles above
-corrplot.mixed(M,lower.col = "black",number.cex=.7)
+##corrplot.mixed(M,lower.col = "black",number.cex=.7)
 
 #Correlaton matrix with linear trends
 ggpairs(train, 
@@ -74,15 +74,18 @@ ggpairs(train,
 #Summary of the Linear model
 summary(lm(rating ~ calories+protein+fat+sodium+fiber+carbo+sugars+potass+shelf+weight+cups, data = train))$coef
 
-#Checking Collinearity using VIF(Variable inflation factor)
+#Checking Collinearity using VIF(Variable inflation factor).
+#Attributes with lesser VIFs are preferred. 
+#Attributes with VIF > 5 are disregarded.
 fitvif<-lm(rating ~ calories+protein+fat+sodium+fiber+carbo+sugars+potass+shelf+weight+cups, data = train)
+fitvif$coefficients
+summary(fitvif)$r.squared
 kable(vif((fitvif)),format = "markdown",align = 'c',padding = 2)
 
 finalfit<-lm(rating ~ protein+fat+sodium+sugars, data = train)
 summary(finalfit)$coef 
 summary(finalfit)
-AIC(finalfit)
-BIC(finalfit)
+
 
 summary(finalfit)$r.squared
 #Checking the VIF for the selected attributes 
@@ -93,7 +96,7 @@ residualPlot(finalfit)
 train_RMSE = sqrt(mean(finalfit$residuals^2))
 train_RMSE
 
-#Checking if the test and train MSEs.(Low Train MSE and High test MSE = Overfitting, high and high = underfitting)
+#Predicting using the regression model name finalfit
 predict_rating<-predict(finalfit, test)
 predict_rating
 
@@ -106,42 +109,19 @@ plot(actuals_preds)
 #add a regression line b/w predicted and actuals.
 abline(lm(actuals_preds$predicteds~actuals_preds$actuals),col="red")
 
-accuracy(actauls_preds$predicteds,actauls_preds$actauls)
-actauls_preds$predicteds
-actauls_preds$actauls
-
+accuracy(actuals_preds$predicteds,actuals_preds$actuals)
+actuals_preds$predicteds
+actuals_preds$actuals
 Accuracy(y_pred = actuals_preds$predicteds,y_true = actuals_preds$actuals)
 
-RMSE(actauls_preds$predicteds,actauls_preds$actauls)
+RMSE(actuals_preds$predicteds,actuals_preds$actuals)
 
+#Checking if the test and train RMSEs.(Low Train MSE and High test MSE = Overfitting, high and high = underfitting)
 test_RMSE<-sqrt(mean((predict_rating - test$rating)^2))
 test_RMSE
 
 
-#As the test and train RMSE vary a lot we use K-fold Cross Validation
-# K fold Cross validation
-controlparameters<-trainControl(method="cv",number=10,
-                                savePredictions = TRUE,
-                                classProbs = TRUE,
-                                verboseIter = TRUE)
 
-
-model<-train(rating ~ protein+fat+sodium+sugars, 
-             data = train,
-             method = "lm",
-             trControl = controlparameters
-             )
-model  
-model$resample
-model$metric
-
-predict_model_rating<-predict(model, test)
-predict_model_rating
-
-
-#Attempt to create confusion matrix
-t<-table(actual=test$rating, predictions=predict_rating)
-t
-test$rating 
+ 
 
 
